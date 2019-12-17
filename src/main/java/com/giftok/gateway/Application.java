@@ -1,27 +1,31 @@
 package com.giftok.gateway;
 
 import com.giftok.gateway.topic.CertificateCreationPublisher;
+import spark.Request;
 
-import static spark.Spark.get;
 import static spark.Spark.port;
+import static spark.Spark.post;
 
 public class Application {
     public static void main(String[] args) {
         CertificateCreationPublisher publisher = new CertificateCreationPublisher();
 
         port(8080);
-        get("/publishMessage", (req, res) -> {
-            publisher.publishMessage(createCertificate().toByteString());
+        post("/createCertificate", (req, res) -> {
+            publisher.publishMessage(createCertificate(req).toByteString());
             return "Success";
         });
     }
 
 
-    private static CertificateProto.Certificate createCertificate() {
+    private static CertificateProto.Certificate createCertificate(Request request) {
+        long amount = Long.parseLong(request.queryParams("amount"));
+        CertificateProto.Certificate.Currency currency = CertificateProto.Certificate.Currency.valueOf(request.queryParams("currency"));
+        String text = request.queryParams("text");
         return CertificateProto.Certificate.newBuilder()
-                .setCurrency(CertificateProto.Certificate.Currency.EUR)
-                .setAmount(100)
-                .setText("Hello")
+                .setCurrency(currency)
+                .setAmount(amount)
+                .setText(text)
                 .build();
     }
 }

@@ -14,10 +14,10 @@ import java.util.concurrent.TimeUnit;
 
 public class CertificateCreationPublisher {
     private static final String PROJECT = "single-outrider-260808";
-    private static final String SUBSCRIPTION = "certificate-creation-topic";
+    private static final String TOPIC = "certificate-creation-topic";
 
     public void publishMessage(ByteString data) throws Exception {
-        ProjectTopicName topicName = ProjectTopicName.of(PROJECT, SUBSCRIPTION);
+        ProjectTopicName topicName = ProjectTopicName.of(PROJECT, TOPIC);
         Publisher publisher = null;
         ApiFuture<String> future = null;
         try {
@@ -32,7 +32,6 @@ public class CertificateCreationPublisher {
             // Add an asynchronous callback to handle success / failure
             ApiFutures.addCallback(future,
                     new ApiFutureCallback<>() {
-
                         @Override
                         public void onFailure(Throwable throwable) {
                             if (throwable instanceof ApiException) {
