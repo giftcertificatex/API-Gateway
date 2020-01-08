@@ -1,32 +1,57 @@
 package com.giftok.gateway;
 
-import com.giftok.certificate.message.CertificateMessageOuterClass.CertificateMessage;
-import com.giftok.certificate.message.CertificateMessageOuterClass.CertificateMessage.Currency;
-import com.giftok.gateway.topic.CertificateCreationPublisher;
-import spark.Request;
-
+import static spark.Spark.options;
 import static spark.Spark.port;
 import static spark.Spark.post;
 
+import com.giftok.certificate.message.CertificateMessageOuterClass.CertificateMessage;
+import com.giftok.certificate.message.CertificateMessageOuterClass.CertificateMessage.Currency;
+import com.giftok.certificate.message.CertificateMessageOuterClass.CertificateMessage.User;
+import com.giftok.gateway.payload.CertCreationInfo;
+import com.giftok.gateway.response.StandardResponse;
+import com.giftok.gateway.response.StatusResponse;
+import com.giftok.gateway.topic.CertificateCreationPublisher;
+import com.google.gson.Gson;
+
+import spark.Request;
+import spark.Response;
+
 public class Application {
-    public static void main(String[] args) {
-        CertificateCreationPublisher publisher = new CertificateCreationPublisher();
+	public static void main(String[] args) {
+		CertificateCreationPublisher publisher = new CertificateCreationPublisher();
 
-        port(8080);
-        post("/createCertificate", (req, res) -> {
-            publisher.publishMessage(createCertificate(req).toByteString());
-            return "Success";
-        });
-    }
+		port(8081);
+		options("/createCertificate", (req, res) -> {
+			res.status(200);
+			setupResponseHeaders(res);
+			return "Success";
+		});
+		post("/createCertificate", (req, res) -> {
+			setupResponseHeaders(res);
+			res.type("application/json");
+			try {
+				CertificateMessage cerCreationMessage = createCertificate(req);
+				publisher.publishMessage(cerCreationMessage.toByteString());
+				res.status(200);
+				return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS));
+			} catch (Exception e) {
+				res.status(500);
+				e.printStackTrace();
+				return new Gson().toJson(new StandardResponse(StatusResponse.ERROR, e.getMessage()));
+			}
+		});
+	}
 
-    private static CertificateMessage createCertificate(Request request) {
-        int amount = Integer.parseInt(request.queryParams("amount"));
-        Currency currency = Currency.valueOf(request.queryParams("currency"));
-        var text = request.queryParams("text");
-        return CertificateMessage.newBuilder()
-                .setCurrency(currency)
-                .setAmount(amount)
-                .setText(text)
-                .build();
-    }
+	private static void setupResponseHeaders(Response res) {
+		res.header("Access-Control-Allow-Headers", "x-requested-with, x-requested-by, Content-Type");
+		res.header("Access-Control-Allow-Origin", "*");// "http://localhost:8080"
+	}
+
+	private static CertificateMessage createCertificate(Request request) {
+		CertCreationInfo certInfo = new Gson().fromJson(request.body(), CertCreationInfo.class);
+		Currency currency = Currency.forNumber(certInfo.getCurrencyType());
+		User user = CertificateMessage.User.newBuilder().setEmail(certInfo.getEmail()).build();
+		return CertificateMessage.newBuilder().setCurrency(currency).setAmount(certInfo.getAmount()).setOwner(user)
+				.setId(certInfo.getCardHash()).setCardHash(certInfo.getCardHash()).build();
+	}
 }
