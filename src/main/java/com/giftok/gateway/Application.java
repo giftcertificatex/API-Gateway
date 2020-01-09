@@ -3,6 +3,7 @@ package com.giftok.gateway;
 import static spark.Spark.options;
 import static spark.Spark.port;
 import static spark.Spark.post;
+import static spark.Spark.get;
 
 import com.giftok.certificate.message.CertificateMessageOuterClass.CertificateMessage;
 import com.giftok.certificate.message.CertificateMessageOuterClass.CertificateMessage.Currency;
@@ -20,7 +21,13 @@ public class Application {
 	public static void main(String[] args) {
 		CertificateCreationPublisher publisher = new CertificateCreationPublisher();
 
-		port(8081);
+		int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8081"));
+		port(port);
+		get("/", (req, res) -> {
+			res.status(200);
+			setupResponseHeaders(res);
+			return "OK";
+		});
 		options("/createCertificate", (req, res) -> {
 			res.status(200);
 			setupResponseHeaders(res);
